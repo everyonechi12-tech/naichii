@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  CUSTOMER
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PACKED
+  SHIPPED
+  DELIVERED
+  CANCELED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+model User {
+  id         String    @id @default(uuid())
+  email      String    @unique
+  name       String?
+  password   String
+  role       UserRole  @default(CUSTOMER)
+  orders     Order[]
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model Product {
+  id             Int            @id @default(autoincrement())
+  name           String
+  slug           String         @unique
+  description    String
+  price          Int
+  salePrice      Int?
+  stock          Int            @default(0)
+  rating         Float          @default(0)
+  totalSold      Int            @default(0)
+  primaryImageId Int?           @unique
+  primaryImage   ProductImage?  @relation("PrimaryImage", fields: [primaryImageId], references: [id])
+  images         ProductImage[] @relation("ProductImages")
+  orderItems     OrderItem[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+}
+
+model ProductImage {
+  id               Int      @id @default(autoincrement())
+  product          Product  @relation("ProductImages", fields: [productId], references: [id])
+  productId        Int
+  imageUrl         String
+  isPrimary        Boolean  @default(false)
+  primaryForProduct Product? @relation("PrimaryImage")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([productId])
+  @@unique([productId, imageUrl])
+}
+
+model Order {
+  id              Int           @id @default(autoincrement())
+  user            User          @relation(fields: [userId], references: [id])
+  userId          String
+  status          OrderStatus   @default(PENDING)
+  paymentStatus   PaymentStatus @default(PENDING)
+  totalAmount     Int
+  shippingAddress String
+  items           OrderItem[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model OrderItem {
+  id          Int     @id @default(autoincrement())
+  order       Order   @relation(fields: [orderId], references: [id])
+  orderId     Int
+  product     Product @relation(fields: [productId], references: [id])
+  productId   Int
+  productName String
+  unitPrice   Int
+  quantity    Int
+  subtotal    Int
+}
